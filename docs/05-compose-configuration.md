@@ -1,9 +1,13 @@
 # 5. Compose Configuration
 
 This repository ships a complete Compose kit in `compose/`, adapted from the
-official Akeyless Labs docker-compose repository with two changes: the SSH
-bastion CA mount is enabled by default, and a Prometheus scrape config is
-provided. You do not clone anything else.
+official Akeyless Labs docker-compose repository. The differences from
+upstream, each explained where it is configured: the SSH bastion CA mount is
+enabled by default, the SSH bastion runs as root under `privileged` because
+its entrypoint writes to `/etc/ssh`, the cache runs as an unprivileged user
+with all capabilities dropped, the gateway carries `rp_filter` sysctls
+because it sits on two networks, and a Prometheus scrape config is provided.
+You do not clone anything else.
 
 ## Copy the environment files
 

@@ -58,3 +58,34 @@ the gateway registered in the account console, API-key sign-in to the local
 console verified, and an end-to-end SSH session through the bastion on host
 port 2222, confirmed by the Akeyless banner and command execution on the
 target as the expected OS user.
+
+## Podman pass
+
+A second pass, September 2026, ran the same Compose kit on Podman 4.9
+rootful with the `podman-docker` shim and a standalone Docker Compose v2 as
+the external provider. The Docker findings above still stand unchanged. The
+differences this pass found are folded into the chapters:
+
+| # | Symptom during the pass | Root cause | Fix landed |
+|---|---|---|---|
+| P1 | Every `docker` command without `sudo` saw an empty stack | The shim maps `docker` to the calling user's Podman store, and the stack runs rootful | Chapter 2 Podman notes: prefix every command with `sudo` |
+| P2 | `docker logs akeyless-gateway --tail 50` failed with `no container with name or ID "--tail" found` | The shim passes arguments to `podman`, which rejects a flag placed after the container name | All chapters now write flags before container names, a form Docker Engine also accepts |
+| P3 | Connections to the gateway through its second network were dropped | The gateway sits on two bridge networks, so it holds two routes, and strict reverse-path filtering discards traffic arriving on the secondary interface | `sysctls` on the gateway service set `rp_filter` to loose mode, validated on Podman and Docker Engine |
+| P4 | Connect printed the containerized target's greeting, then died with exit 254, or failed intermittently with 255 | The target container inherited the launching session's loginuid, the stock `pam_loginuid required` line in its `/etc/pam.d/sshd` cannot rewrite it, PAM opens no session, and sshd exits after the greeting | Chapter 11 symptom section; containerized targets need `session optional pam_loginuid.so` |
+| P5 | After a host reboot the stack would stay down | Podman does not honor `restart: always` on boot by itself | Chapter 2: enable `podman-restart.service` |
+
+Lab-host specifics that are not general requirements: the Docker snap was
+stopped because two container engines on one host overwrite each other's
+firewall rules, host firewall forwarding was opened for the Podman bridge,
+and the test client ran on the host itself, so reaching the published ports
+through the host's external address needed NAT hairpin. The `:Z` mount
+labels are no-ops on the non-SELinux lab host and stay untested on SELinux.
+
+Verified after the fixes: ten consecutive connects plus a PTY session, three
+connects after a full `down`/`up` recreate with the sysctls intact, one
+connect after tearing the stack down and restoring it around a Docker Engine
+regression run, the web bastion answering HTTP 400 on a bare GET as
+documented, and the Compose file with the sysctls block still bringing up a
+healthy gateway under Docker Engine 29.6. The reboot path was verified as
+configuration, `podman-restart.service` enabled and active with the restart
+policies set; an actual reboot was not exercised.

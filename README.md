@@ -109,13 +109,15 @@ end to end:
 |---|---|---|
 | Docker Engine | 20.10 or newer | Any Linux distribution that runs Docker |
 | Docker Compose | v2.x, or 1.29 or newer | v2 recommended; commands in this runbook use `docker compose` |
+| Podman, optional alternative | 4.9 or newer | Runs the same Compose kit through the `podman-docker` shim; see the Podman notes in [chapter 2](docs/02-prerequisites.md) |
 | Akeyless CLI | Current release | Install before chapter 3 |
 | Host architecture | x86-64 | Images are pinned to `linux/amd64` |
 | Akeyless account | Admin access | You create auth methods, roles, and an SSH Certificate Issuer |
 
 Verified against the Akeyless documentation and the upstream
-akeylesslabs/docker-compose repository in September 2026, and executed end
-to end on a clean host; see [VALIDATION-LOG.md](VALIDATION-LOG.md).
+akeylesslabs/docker-compose repository in September 2026, executed end
+to end on a clean Docker host and again on Podman 4.9 with the
+compatibility shim; see [VALIDATION-LOG.md](VALIDATION-LOG.md).
 
 ## Additional resources
 

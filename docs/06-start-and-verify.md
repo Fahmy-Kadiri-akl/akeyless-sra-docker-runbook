@@ -12,6 +12,9 @@ From the `compose/` directory:
 docker compose --profile gateway --profile sra up -d
 ```
 
+On a Podman host, prefix the command with `sudo`; chapter 2 covers the
+Podman-specific rules.
+
 **What happens:** Docker pulls the images on first run, the gateway image is
 the large one at roughly one gigabyte, then starts the containers in
 dependency order: cache first, gateway after a health wait, bastions last.
@@ -52,7 +55,7 @@ gateway is still starting; wait sixty seconds and retry. If it keeps
 failing, check the logs:
 
 ```bash
-docker logs akeyless-gateway --tail 50
+docker logs --tail 50 akeyless-gateway
 ```
 
 The two common failure messages are an authentication error against

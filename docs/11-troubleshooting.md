@@ -8,7 +8,7 @@ bottom within a symptom; the causes are ordered by how often they occur.
 **Diagnosis:**
 
 ```bash
-docker logs akeyless-gateway --tail 50
+docker logs --tail 50 akeyless-gateway
 ```
 
 Look at the last error lines before the health check failures.
@@ -37,7 +37,7 @@ Akeyless console under **Configuration**.
 
 ```bash
 docker ps -a --filter name=akeyless-sra
-docker logs akeyless-sra-ssh --tail 50
+docker logs --tail 50 akeyless-sra-ssh
 ```
 
 **Fix:** the bastions wait for the gateway health check, so this follows
@@ -133,6 +133,29 @@ while sessions work.
 supervisor cannot manage system services the way it expects, so its
 watchdog reports failures that do not affect SSH proxying. The container is
 healthy as long as `docker ps` shows `Up` and sessions connect.
+
+## Connect prints the target greeting, then the session dies
+
+**Diagnosis:** `akeyless connect` reaches the target, the target's login
+greeting appears, then the session closes with no command output. The
+failing connect exits 254, or fails intermittently with 255; both numbers
+are the same failure. This affects targets that are containers launched by
+hand from an interactive SSH session, which is common in lab setups.
+
+**Fix:** every process inside such a target container inherits the loginuid
+of the session that launched it, and that loginuid is already set and
+immutable. The stock `pam_loginuid` line in the target's `/etc/pam.d/sshd`
+is `session required`, so PAM cannot write the loginuid, fails to open the
+session, and sshd closes the connection after the greeting but before
+running the command. On the target, relax the line to:
+
+```
+session optional pam_loginuid.so
+```
+
+That form is standard for sshd inside containers. Targets that are normal
+hosts keep the stock line; there the kernel writes the loginuid at real
+login time and the strict setting works.
 
 ## Connection to the target times out
 
