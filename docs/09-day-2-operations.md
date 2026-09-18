@@ -53,15 +53,28 @@ To upgrade deliberately rather than on every restart, pin the version: set
 sequence above. The rest of the stack upgrades only through image pulls,
 because the bastion and cache images carry no application version variable.
 
+## Tearing down
+
+```bash
+docker compose --profile gateway --profile sra down
+```
+
+This removes the containers and, when nothing else uses them, the networks.
+If you attached a container that the Compose file does not define, for
+example a test target connected to `internal-net` by hand, the command prints
+`Network ... Resource is still in use` and leaves the networks in place. That
+warning is harmless: the stack containers are still removed, and the next
+`up` reuses the networks as they are.
+
 ## Logs
 
 Both bastion services ship with `DEBUG: true` in the Compose file, which
 gives verbose session-level logging. The useful views:
 
 ```bash
-docker logs akeyless-gateway --tail 100
-docker logs akeyless-sra-ssh --tail 100
-docker logs akeyless-sra-web --tail 100
+docker logs --tail 100 akeyless-gateway
+docker logs --tail 100 akeyless-sra-ssh
+docker logs --tail 100 akeyless-sra-web
 ```
 
 Follow live with `-f`. The gateway log carries authentication decisions

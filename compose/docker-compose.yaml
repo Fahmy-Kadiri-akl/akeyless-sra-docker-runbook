@@ -45,8 +45,13 @@ services:
       - gateway.env
       - cache.env
     platform: linux/amd64
-    links:
-      - "akeyless-cache"
+    sysctls:
+      # The gateway sits on two bridge networks, so it holds two default
+      # routes. Strict reverse-path filtering drops inbound connections that
+      # arrive through the secondary interface. Loose mode (2) keeps
+      # multi-homed routing working. Applies to both runtimes.
+      - net.ipv4.conf.all.rp_filter=2
+      - net.ipv4.conf.default.rp_filter=2
     # volumes:
      # --- Metrics / OpenTelemetry (OPTIONAL) ---
       # Put your own OTEL config on the host and mount it into the container.
@@ -99,8 +104,6 @@ services:
       REMOTE_ACCESS_TYPE: "web"
       DEBUG: true
     platform: linux/amd64
-    links:
-      - "akeyless-cache"
     networks:
       - internal-net
 
@@ -136,11 +139,11 @@ services:
   # See docs/04-ssh-certificate-issuer.md in this repository for how to export it.            #
   # ------------------------------------------------------------------------------------------#
     volumes:
-      - ./ssh-config/:/var/akeyless/creds/
+      # :Z labels the mount private so the container can read it on SELinux
+      # hosts, Fedora and RHEL included. It is a no-op elsewhere.
+      - ./ssh-config/:/var/akeyless/creds/:Z
 
     platform: linux/amd64
-    links:
-      - "akeyless-cache"
     networks:
       - internal-net
 
@@ -185,7 +188,7 @@ services:
     volumes:
       # Prometheus config shipped with this repository; scrapes the gateway
       # metrics endpoint on the internal-metrics network.
-      - ./metrics/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./metrics/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
 
       # --- PERSISTENCE: Prometheus TSDB data ---
       # Keeps time-series data across container restarts/recreates.

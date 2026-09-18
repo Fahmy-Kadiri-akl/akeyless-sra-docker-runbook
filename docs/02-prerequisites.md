@@ -47,6 +47,40 @@ commands in this runbook with `sudo`.
 The Docker host must be x86-64. The Compose file pins every Akeyless image to
 `linux/amd64`.
 
+### Running the stack on Podman instead
+
+The chapters say `docker`, and Podman 4.9 or newer runs the same Compose kit
+unchanged through the `podman-docker` compatibility shim. This path was
+validated end to end in September 2026. Install `podman`, the
+`podman-docker` package, and Docker Compose v2 as a standalone binary; Podman
+picks up the standalone Compose as its external provider, so
+`docker compose ...` keeps working through the shim. Check with
+`podman --version` and `docker compose version`.
+
+Three shim differences change how you type the commands:
+
+1. Prefix every `docker` command with `sudo`. The shim maps `docker` to
+   `podman` against the calling user's container store, and the stack runs
+   rootful, so without `sudo` every command sees an empty stack and reports
+   the containers as missing.
+2. Put flags before container names. The shim hands the arguments to
+   `podman`, which rejects a flag after the container name:
+   `docker logs akeyless-gateway --tail 50` fails with
+   `no container with name or ID "--tail" found`, while
+   `docker logs --tail 50 akeyless-gateway` works. Every command in this
+   runbook uses the flag-first form, which Docker Engine accepts as well.
+3. Do not run Docker Engine and Podman containers on the same host at the
+   same time. Both engines write host firewall rules, and either engine can
+   break the other's published ports. If Docker is installed as a snap, stop
+   it with `sudo snap stop docker` before starting this stack under Podman.
+
+Podman also does not restart `restart: always` containers after a reboot by
+itself. Enable the service that does:
+
+```bash
+sudo systemctl enable --now podman-restart.service
+```
+
 ## Network requirements
 
 ### Outbound, from the Docker host
