@@ -41,6 +41,15 @@ upgrade paths and chapter 10 optional features were outside this pass.
 | 12 | Chapter 4 verification grepped for `pubkeyacceptedkeytypes` | OpenSSH 9.x prints the renamed `pubkeyacceptedalgorithms` | Chapter 4 verification accepts both forms |
 | 13 | Port 2222 refused although Docker showed the mapping | Stale Kubernetes NAT rules on the host intercepted the port; a listening docker-proxy is no proof of reachability | Free-port probe added to chapter 2, diagnosis symptom added to chapter 11 |
 | 14 | Bastion logs showed a crashing rsyslog loop and `CheckServicesStatus` exit code 3 | The service supervisor cannot manage system services inside the privileged container; SSH proxying is unaffected | Documented as benign in chapter 11 |
+| 15 | Setting `GATEWAY_AUTHORIZED_ACCESS_ID` blocked user connects with `ERR! access-id is not in the allowed list` | The allowlist gates all traffic routed through the gateway, SRA sessions included, so user auth method Access IDs must be in it | Chapter 7 documents the correct list, chapter 5 and `gateway.env.example` carry the variable, symptom added to chapter 11 |
+
+## Follow-up: transport allowlist
+
+After the main pass, `GATEWAY_AUTHORIZED_ACCESS_ID` was exercised on the same
+deployment in three states: unset, set without the user auth method's Access
+ID, and set with it. The unset and correctly set states both connected; the
+middle state failed before authentication with `ERR! access-id is not in the
+allowed list`. Finding 15 and the chapter 7 guidance come from that sequence.
 
 ## Result
 

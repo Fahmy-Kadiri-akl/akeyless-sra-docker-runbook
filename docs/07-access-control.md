@@ -10,17 +10,46 @@ separates the layers, then builds the first end-user role.
 |---|---|---|
 | Privileged identity | Who can configure the gateway itself | `ALLOWED_ACCESS_PERMISSIONS` in `gateway.env` |
 | Console admins | Who can sign in to the local console and with which permissions | Same JSON, the `permissions` array |
-| Transport allowlist | Which auth methods may route API traffic through this gateway | `GATEWAY_AUTHORIZED_ACCESS_ID`, optional |
+| Transport allowlist | Which auth methods may route traffic through this gateway, SRA sessions included | `GATEWAY_AUTHORIZED_ACCESS_ID`, optional |
 | SRA rules | Which user may open a session, and with which capability | Akeyless roles with SRA capabilities on issuer or target paths |
 
 ### The two env variables people mix up
 
 `ALLOWED_ACCESS_PERMISSIONS` grants gateway administration. It answers who
 manages the gateway. `GATEWAY_AUTHORIZED_ACCESS_ID` optionally restricts
-which Access IDs may use the gateway as a transport for API traffic. It
-answers which auth methods may pass through. Users connecting through SRA are
-controlled by SRA rules, which are ordinary Akeyless role rules set in the
-account, not in the environment file.
+which Access IDs may route traffic through the gateway. It answers which
+auth methods may pass through. SRA permissions are decided by role rules in
+the account, but the allowlist sits in front of them: when it is set, a
+connect whose Access ID is missing from the list is rejected before any role
+rule is consulted.
+
+### The transport allowlist and your users
+
+`GATEWAY_AUTHORIZED_ACCESS_ID` takes a comma-separated list of Access IDs.
+Leave it unset and the gateway routes traffic for any auth method in the
+account. Set it and the list gates everything routed through the gateway,
+SRA sessions included. The value to put there is the Access IDs of your user
+auth methods: the `SraUsersKey` created in this chapter, plus every SAML,
+OIDC, or LDAP auth method you add for portal users later. The gateway's own
+`GATEWAY_ACCESS_ID` needs no listing, because the gateway implicitly trusts
+itself.
+
+This behavior was verified on a running deployment in three states. With the
+variable unset, a CLI connect succeeded. With the variable set to a list that
+omitted the user key's Access ID, the same connect failed before
+authentication with:
+
+```
+ERR! access-id is not in the allowed list
+```
+
+With the user key's Access ID added to the list, the connect succeeded again.
+The Akeyless Helm chart exposes this same control under the name
+`authorizedAccessIDs`.
+
+Listing a user key in the allowlist grants nothing beyond routing. What the
+user may do is still decided by their role rules, and gateway administration
+is still decided by `ALLOWED_ACCESS_PERMISSIONS`.
 
 ## SRA capabilities
 

@@ -31,6 +31,7 @@ its values match the Compose file.
 | `GATEWAY_ACCESS_TYPE` | `access_key` | Must match the auth method type created in chapter 3. Other supported values: `password`, `saml`, `ldap`, `k8s`, `azure_ad`, `oidc`, `aws_iam`, `universal_identity`, `jwt`, `gcp`, `cert`, `oci`, `kerberos` |
 | `GATEWAY_ACCESS_KEY` | Gateway Access Key from chapter 3 | The secret matching the Access ID |
 | `ALLOWED_ACCESS_PERMISSIONS` | The JSON from chapter 3 | Who may administer the gateway console, with which permissions |
+| `GATEWAY_AUTHORIZED_ACCESS_ID` | Unset | Optional transport allowlist. When set, every auth method routing through this gateway, SRA users included, must have its Access ID in this comma-separated list. Read chapter 7 before enabling it |
 | `ENABLE_TLS_CONFIGURE` | `true` | Lets the gateway manage its own TLS configuration; chapter 10 |
 | `GATEWAY_CLUSTER_CACHE` | `enable` | Gateway caching toggle; SRA requires the cache service |
 | `USE_CLUSTER_CACHE` | `true` | Use the Redis-backed cache |
