@@ -79,6 +79,16 @@ the issuer path. The `list` capability alone leaves the signing call
 unauthorized; rerun the first `set-role-rule` from chapter 7 with
 `--capability list --capability read`.
 
+## Connect fails with `ERR! access-id is not in the allowed list`
+
+**Diagnosis:** the connect is rejected before authentication.
+
+**Fix:** `GATEWAY_AUTHORIZED_ACCESS_ID` is set in `gateway.env` and the user
+auth method's Access ID is missing from the list. The variable takes a
+comma-separated list of user auth method Access IDs. Add the missing one and
+recreate the gateway, or unset the variable to remove the restriction
+entirely. Chapter 7 explains what belongs in the list.
+
 ## Port refused although nothing seems to listen on it
 
 **Diagnosis:** `docker port` shows the mapping and a TCP probe to the port
