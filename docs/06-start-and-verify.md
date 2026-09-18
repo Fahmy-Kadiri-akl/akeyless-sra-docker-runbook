@@ -46,9 +46,10 @@ not become healthy; continue to the next verification to see why.
 curl -f http://localhost:8080/health
 ```
 
-**Expected output:** `OK` and HTTP 200. The `-f` flag makes curl fail on any
-error status. If the connection is refused, the gateway is still starting;
-wait sixty seconds and retry. If it keeps failing, check the logs:
+**Expected output:** the body `Health Check Ok` and HTTP 200. The `-f` flag
+makes curl fail on any error status. If the connection is refused, the
+gateway is still starting; wait sixty seconds and retry. If it keeps
+failing, check the logs:
 
 ```bash
 docker logs akeyless-gateway --tail 50
@@ -91,8 +92,9 @@ an API key, so use **API Key** sign-in with that Access ID and Access Key.
 
 ## What success looks like
 
-Four containers `Up`, `curl -f` returning OK, the gateway visible in the
-Akeyless console, and the local console reachable in a browser.
+Four containers `Up`, `curl -f` returning `Health Check Ok`, the gateway
+visible in the Akeyless console, and the local console reachable in a
+browser.
 
 ## What you have at this point
 

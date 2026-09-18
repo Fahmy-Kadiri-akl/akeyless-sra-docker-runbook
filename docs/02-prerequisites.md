@@ -73,6 +73,19 @@ portal ride on it, and in this plain-HTTP deployment nothing authenticates the
 transport layer. Bind these ports to the management interface or restrict them
 with the host firewall.
 
+Confirm each inbound port is free before chapter 6:
+
+```bash
+for p in 8000 8080 2222 8888 8889; do
+  timeout 1 bash -c "</dev/tcp/127.0.0.1/$p" 2>/dev/null && echo "$p IN USE" || echo "$p free"
+done
+```
+
+**Expected output:** `free` on every line. A container or a Kubernetes
+hostPort rule on the host can intercept a port even when nothing appears to
+listen on it; chapter 11 has the diagnosis path if a port that shows free
+still refuses connections later.
+
 ### On target hosts
 
 | Requirement | Detail |
@@ -86,9 +99,8 @@ with the host firewall.
 - [ ] An Akeyless account where you can sign in to the console as an admin.
 - [ ] Permission to create auth methods, roles, DFC keys, and SSH Certificate
       Issuers. The account admin has all of these by default.
-- [ ] The account's cluster name, visible in the console under
-      **Configuration**, or from `akeyless describe-account-details`. You set
-      it as `CLUSTER_NAME` in chapter 5.
+- [ ] The account's cluster name, visible in the Akeyless console under
+      **Configuration**. You set it as `CLUSTER_NAME` in chapter 5.
 
 ## Target host requirements
 
@@ -111,7 +123,7 @@ Collect these once; chapters 3 to 8 consume them:
 | Parameter | Description | Example |
 |---|---|---|
 | Cluster name | Your Akeyless cluster name from the console | `cl-xxxxxxxxx` or a custom name |
-| Admin email | The identity you sign in to the console with, used in the permissions JSON | `admin@example.com` |
+| Admin API key Access ID | The Access ID of the admin API key from chapter 3, used in the permissions JSON | `p-xxxxxxxxxxxx` |
 | Gateway Access ID | The Access ID of the API key you create in chapter 3, starts with `p-` | `p-xxxxxxxxxxxx` |
 | Gateway Access Key | The secret generated with that API key, shown once | a long random string |
 | Docker host address | DNS name or IP your users reach | `sra.example.internal` |

@@ -68,7 +68,10 @@ One variable:
 
 Redis is bound to `127.0.0.1:6379` on the host and runs as user 65534 with
 all capabilities dropped. The password is defense in depth, not the only
-barrier.
+barrier. One hardening flag is deliberately absent: the Compose file sets no
+`no-new-privileges` on this service, because the Redis entrypoint execs the
+server process under a different uid and current Docker releases kill it
+with `exec operation not permitted` when the flag is present.
 
 ## The ssh-config mount
 

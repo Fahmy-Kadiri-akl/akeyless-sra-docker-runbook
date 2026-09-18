@@ -51,9 +51,16 @@ As the admin CLI profile from chapter 3:
 akeyless auth-method create api-key --name SraUsersKey
 ```
 
-**Expected output:** an `access_id` and `access_key`. Give these to your
-first user; they are ordinary account credentials, unrelated to the gateway
-identity of chapter 3.
+**Expected output:**
+
+```
+Auth method SraUsersKey successfully created
+- Access ID: p-xxxxxxxxxxxxxx
+- Access Key: <a long secret, shown once>
+```
+
+Give these to your first user; they are ordinary account credentials,
+unrelated to the gateway identity of chapter 3.
 
 For production, replace this API key with your corporate SAML or OIDC auth
 method. The portal requires SAML, OIDC, certificate, or LDAP authentication,
@@ -62,8 +69,9 @@ An API key works only for CLI sessions.
 
 ## Create the user role
 
-This is the sequence the Akeyless first-connection guide uses: `list` for
-visibility on the issuer, `allow_access` for the session itself.
+Three commands build the role: create it, then two rules, then the binding.
+The rules must be split, because `allow_access` is an SRA capability and
+lives under a different rule type than `list`:
 
 ```bash
 akeyless create-role --name SraUsers
@@ -72,6 +80,12 @@ akeyless set-role-rule \
   --role-name SraUsers \
   --path /sra/SSHCertIssuer \
   --capability list \
+  --capability read
+
+akeyless set-role-rule \
+  --role-name SraUsers \
+  --path /sra/SSHCertIssuer \
+  --rule-type sra-rule \
   --capability allow_access
 
 akeyless assoc-role-am \
@@ -79,10 +93,21 @@ akeyless assoc-role-am \
   --am-name SraUsersKey
 ```
 
-**Expected output:** three JSON confirmations. Granting `allow_access` on the
-issuer path covers every host the issuer serves. To narrow a user to one
-host, set `--secure-access-enforce-hosts-restriction` on the issuer as shown
-in chapter 8, or grant capabilities on a linked target path instead.
+**Expected output:** `A new role named SraUsers was successfully created`,
+then two rule confirmations, then
+`Association ass-xxxxxxxxxxxxxx was successfully created`.
+
+The first rule is an items rule. The `list` capability alone looks sufficient
+for visibility, but certificate signing also reads the issuer; a user with
+`list` and no `read` reaches the signing call and receives `401
+Unauthorized`. The second rule carries the SRA capability under
+`--rule-type sra-rule`; leaving the rule type off puts `allow_access` on an
+items rule, where the CLI rejects it as an invalid capability.
+
+Granting `allow_access` on the issuer path covers every host the issuer
+serves. To narrow a user to one host, set
+`--secure-access-enforce-hosts-restriction` on the issuer as shown in
+chapter 8, or grant capabilities on a linked target path instead.
 
 ### Verify
 
@@ -109,7 +134,7 @@ chapter 8 works with no other moving parts.
 | Object | State |
 |---|---|
 | `SraUsersKey` | API key auth method for end users |
-| `SraUsers` | Role with `list` and `allow_access` on the issuer |
+| `SraUsers` | Role with items rules `list` and `read`, plus an SRA rule with `allow_access`, on the issuer |
 | Approval flow | Not used; the capability to enable it is documented above |
 
 ## Next step

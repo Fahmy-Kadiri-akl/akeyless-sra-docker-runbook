@@ -29,11 +29,18 @@ permissions; use an admin key.
 akeyless auth-method create api-key --name SraGatewayKey
 ```
 
-**Expected output:** a JSON result containing an `access_id` starting with
-`p-` and an `access_key`. Save both in the information table from chapter 2
-as the Gateway Access ID and Gateway Access Key. The Access Key is shown
-once; if you lose it, run `akeyless auth-method update api-key` with
-`--regenerate-key` or delete and recreate the auth method.
+**Expected output:**
+
+```
+Auth method SraGatewayKey successfully created
+- Access ID: p-xxxxxxxxxxxxxx
+- Access Key: <a long secret, shown once>
+```
+
+Save both in the information table from chapter 2 as the Gateway Access ID
+and Gateway Access Key. The Access Key is shown once; if you lose it, run
+`akeyless auth-method update api-key` with `--regenerate-key` or delete and
+recreate the auth method.
 
 ## Create the gateway role
 
@@ -41,7 +48,7 @@ once; if you lose it, run `akeyless auth-method update api-key` with
 akeyless create-role --name SraGatewayRole
 ```
 
-**Expected output:** a JSON result confirming the role exists.
+**Expected output:** `A new role named SraGatewayRole was successfully created`.
 
 ## Grant the role narrow permissions
 
@@ -80,7 +87,7 @@ akeyless assoc-role-am \
   --am-name SraGatewayKey
 ```
 
-**Expected output:** a JSON result confirming the association.
+**Expected output:** `Association ass-xxxxxxxxxxxxxx was successfully created`.
 
 ## Verify the gateway identity works
 
@@ -93,16 +100,23 @@ akeyless auth \
   --access-key xxxxxxxxxx
 ```
 
-**Expected output:** a short-lived token, a string starting with `t-`. If you
-see an authentication error, the Access Key is wrong or the auth method was
-saved with different credentials; recreate the key as described above.
+**Expected output:**
+
+```
+Authentication succeeded.
+Token: t-xxxxxxxxxxxxxxxx
+```
+
+If you see an authentication error, the Access Key is wrong or the auth
+method was saved with different credentials; recreate the key as described
+above.
 
 ## Understand ALLOWED_ACCESS_PERMISSIONS
 
 The environment file in chapter 5 contains this line:
 
 ```json
-ALLOWED_ACCESS_PERMISSIONS='[{"name":"Administrators","access_id":"p-yyyyyy","sub_claims":{"email":["admin@example.com"]},"permissions":["admin"]}]'
+ALLOWED_ACCESS_PERMISSIONS='[{"name":"Administrators","access_id":"p-zzzzzzzzzz","permissions":["admin"]}]'
 ```
 
 It answers a different question than the role you just built. The role
@@ -114,12 +128,14 @@ which means who can sign in to the gateway console and configure the gateway.
 |---|---|
 | `name` | Display name for this entry |
 | `access_id` | The Access ID of the auth method these users will authenticate against |
-| `sub_claims` | Restricts the entry to specific identities, here email addresses |
+| `sub_claims` | Optional; restricts the entry to specific identities. Only meaningful for auth methods that carry an email claim, such as SAML or OIDC. Omit it for API keys |
 | `permissions` | What they may do; `admin` grants full gateway configuration rights |
 
-Keep your admin email in `sub_claims` for this deployment so you can reach
-the local console in chapter 6. Chapter 7 revisits this structure for
-granting narrower rights.
+Set `access_id` to the Access ID of your own admin API key, the one you used
+for `akeyless configure --profile admin` at the start of this chapter, not
+the gateway key created above. An API key entry carries no `sub_claims`: the
+key itself is the identity, so anyone holding it signs in. Chapter 7 revisits
+this structure for granting narrower rights.
 
 ## What you have at this point
 
@@ -127,7 +143,7 @@ granting narrower rights.
 |---|---|
 | `SraGatewayKey` auth method | Gateway Access ID, Gateway Access Key, both go into `gateway.env` |
 | `SraGatewayRole` | No action needed; already bound |
-| Permissions JSON | One admin entry, your email |
+| Permissions JSON | One admin entry, your admin API key Access ID, no sub_claims |
 
 ## Next step
 

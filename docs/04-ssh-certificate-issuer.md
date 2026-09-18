@@ -14,8 +14,9 @@ akeyless create-dfc-key \
   --alg RSA2048
 ```
 
-**Expected output:** a JSON result confirming the key. The private key never
-leaves Akeyless; only public parts are exportable.
+**Expected output:** `A new RSA2048 DFC key named /sra/SSHSignerKey was
+successfully created`. The private key never leaves Akeyless; only public
+parts are exportable.
 
 ## Create the issuer
 
@@ -23,20 +24,25 @@ leaves Akeyless; only public parts are exportable.
 akeyless create-ssh-cert-issuer \
   --name /sra/SSHCertIssuer \
   --signer-key-name /sra/SSHSignerKey \
-  --allowed-users 'ubuntu' \
+  --allowed-users 'ubuntu,session_*' \
   --ttl 300
 ```
 
-Replace `ubuntu` with the target SSH username you chose in chapter 2. If you
-have several usernames on different hosts, pass them separated by commas,
-for example `'ubuntu,ec2-user'`.
+Replace `ubuntu` with the target SSH username you chose in chapter 2. The
+`session_*` entry is required by the SSH bastion itself: every connect
+session is opened under a generated username of the form `session_<id>`,
+signed by the same issuer, and the issuer rejects certificate requests for
+names outside this list. If you have several target usernames, pass them all
+comma-separated together with `session_*`, for example
+`'ubuntu,ec2-user,session_*'`. Repeating the flag replaces the whole list;
+add and remove names only through the comma syntax.
 
 **What each flag controls:**
 
 | Flag | Value in this runbook | Meaning |
 |---|---|---|
 | `--signer-key-name` | `/sra/SSHSignerKey` | The DFC key acting as the CA |
-| `--allowed-users` | `ubuntu` | The only login names that certificates may carry |
+| `--allowed-users` | `ubuntu,session_*` | The only login names that certificates may carry; `session_*` covers the bastion's per-session usernames |
 | `--ttl` | `300` | Certificate lifetime in seconds, five minutes |
 | `--secure-access-enable` | not set yet | Enabled in chapter 8 when the gateway is running |
 
@@ -97,21 +103,22 @@ logged in while you restart so you cannot lock yourself out.
 ### Verify
 
 ```bash
-sudo sshd -T | grep -iE 'trustedusercakeys|pubkeyacceptedkeytypes'
+sudo sshd -T | grep -iE 'trustedusercakeys|pubkeyaccepted'
 ```
 
-**Expected output:** `trustedusercakeys /etc/ssh/ca.pub`, and on OpenSSH 8.2
-and newer also a `pubkeyacceptedkeytypes` line containing
-`ssh-rsa-cert-v01@openssh.com`. If sshd prints a configuration error
-instead, check the lines you appended for typos; sshd refuses to start a
-session with a bad directive.
+**Expected output:** `trustedusercakeys /etc/ssh/ca.pub`, and a
+`pubkeyaccepted...` line containing `ssh-rsa-cert-v01@openssh.com`. OpenSSH
+8.x prints that line as `pubkeyacceptedkeytypes`; OpenSSH 9.x prints it as
+`pubkeyacceptedalgorithms`, the renamed form of the same directive. If sshd
+prints a configuration error instead, check the lines you appended for
+typos; sshd refuses to start a session with a bad directive.
 
 ## What you have at this point
 
 | Object | State |
 |---|---|
 | `/sra/SSHSignerKey` | DFC key, RSA 2048, private part in Akeyless |
-| `/sra/SSHCertIssuer` | Signs certificates for `ubuntu`, TTL 300 seconds, SRA disabled for now |
+| `/sra/SSHCertIssuer` | Signs certificates for `ubuntu` and `session_*`, TTL 300 seconds, SRA disabled for now |
 | `compose/ssh-config/ca.pub` | Exported CA public key, ready to mount |
 | Target hosts | Trusting the CA, no Akeyless software installed |
 

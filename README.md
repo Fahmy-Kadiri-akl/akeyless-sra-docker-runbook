@@ -51,6 +51,7 @@ bastion. Sessions are logged, approvable, and revocable.
 | `compose/ssh-config/` | Drop the issuer CA public key here as `ca.pub` |
 | `compose/metrics/prometheus/prometheus.yml` | Prometheus scrape config for the gateway metrics port |
 | `docs/` | The eleven chapters listed above |
+| `VALIDATION-LOG.md` | Findings and fixes from a full ground-up execution of chapters 1 to 8 |
 
 ## Architecture at a glance
 
@@ -113,7 +114,8 @@ end to end:
 | Akeyless account | Admin access | You create auth methods, roles, and an SSH Certificate Issuer |
 
 Verified against the Akeyless documentation and the upstream
-akeylesslabs/docker-compose repository in September 2026.
+akeylesslabs/docker-compose repository in September 2026, and executed end
+to end on a clean host; see [VALIDATION-LOG.md](VALIDATION-LOG.md).
 
 ## Additional resources
 

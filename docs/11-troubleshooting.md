@@ -27,9 +27,9 @@ Look at the last error lines before the health check failures.
 console's gateway list.
 
 **Fix:** `CLUSTER_NAME` and `GATEWAY_ACCESS_ID` form the identity pair; a
-wrong cluster name registers the gateway against nothing. Check the cluster
-name with `akeyless describe-account-details` as admin and compare it to
-`gateway.env`.
+wrong cluster name registers the gateway against nothing. Compare
+`CLUSTER_NAME` in `gateway.env` against the cluster name shown in the
+Akeyless console under **Configuration**.
 
 ## Bastion stays in Created or restarts repeatedly
 
@@ -58,6 +58,58 @@ the bastion log names its own problem, most often the cache.
 4. On OpenSSH 8.2 and newer, the `PubkeyAcceptedKeyTypes` line from
    chapter 4 must be present.
 
+## Connect fails with `username session_... not part of allowed user list`
+
+**Diagnosis:** the issuer rejects the certificate request before any SSH
+traffic flows.
+
+**Fix:** every session runs under a generated username of the form
+`session_<id>`, so the issuer's Allowed Users list must contain
+`session_*`. Rerun the `update-ssh-cert-issuer` command from chapter 8 with
+the full comma-separated list, for example
+`--allowed-users 'ubuntu,session_*'`. Repeating the `--allowed-users` flag
+replaces the whole list, which is how the entry usually disappears.
+
+## Connect fails with 401 Unauthorized
+
+**Diagnosis:** the user token is valid, but the signing call is rejected.
+
+**Fix:** the user's role needs an items rule with both `list` and `read` on
+the issuer path. The `list` capability alone leaves the signing call
+unauthorized; rerun the first `set-role-rule` from chapter 7 with
+`--capability list --capability read`.
+
+## Port refused although nothing seems to listen on it
+
+**Diagnosis:** `docker port` shows the mapping and a TCP probe to the port
+fails with connection refused, on a host that also runs Kubernetes.
+
+**Fix:** stale container-networking NAT rules can intercept a host port
+after the service that created them is gone. Docker's own proxy listening
+on the port is no proof it is reachable. Check both firewall layers:
+
+```bash
+sudo iptables -t nat -S | grep 2222
+sudo iptables-legacy -t nat -S | grep 2222
+```
+
+Any `CNI-DN-` or `KUBE-` rule mentioning the port is a leftover from a
+Kubernetes hostPort or service. Delete the rule with
+`iptables-legacy -t nat -D <chain> <rule spec>`, or reboot the host, then
+restart the Compose stack. The free-port probe in chapter 2 catches this
+before the first start.
+
+## Bastion logs show rsyslog or CheckServicesStatus errors
+
+**Diagnosis:** `docker logs akeyless-sra-ssh` prints a crashing rsyslog
+loop, or `CheckServicesStatus` entries with exit code 3 every few seconds,
+while sessions work.
+
+**Fix:** ignore them. Under the privileged container the bastion's service
+supervisor cannot manage system services the way it expects, so its
+watchdog reports failures that do not affect SSH proxying. The container is
+healthy as long as `docker ps` shows `Up` and sessions connect.
+
 ## Connection to the target times out
 
 **Diagnosis:** connect hangs after the certificate is issued.
@@ -69,12 +121,15 @@ chapter 8.
 
 ## Portal login rejects the API key
 
-**Diagnosis:** the CLI works, the portal refuses.
+**Diagnosis:** the CLI works, the portal at `/sra/portal` refuses.
 
-**Fix:** expected behavior. The portal needs a browser login, which requires
-SAML, OIDC, certificate, or LDAP authentication. An API key works for CLI
-sessions only. Create an OIDC or SAML auth method and add its Access ID to
-the role association as in chapter 7.
+**Fix:** expected behavior, and it does not apply to the local console.
+Distinguish the two web surfaces. The local console at port 8000 accepts
+API-key sign-in, as verified in chapter 6, as long as the Access ID appears
+in `ALLOWED_ACCESS_PERMISSIONS`. The SRA portal needs a browser login, which
+requires SAML, OIDC, certificate, or LDAP authentication. For portal users,
+create an OIDC or SAML auth method and add its Access ID to the role
+association as in chapter 7.
 
 ## Web or RDP session closes right after login
 
