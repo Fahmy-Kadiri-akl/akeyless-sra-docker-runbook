@@ -74,10 +74,24 @@ replaces the whole list, which is how the entry usually disappears.
 
 **Diagnosis:** the user token is valid, but the signing call is rejected.
 
-**Fix:** the user's role needs an items rule with both `list` and `read` on
-the issuer path. The `list` capability alone leaves the signing call
-unauthorized; rerun the first `set-role-rule` from chapter 7 with
+**Fix:** if the role or its association changed less than a minute ago, wait
+and retry first: permission changes take up to about a minute to propagate,
+and the failure during that window looks identical to a missing rule. If the
+role is older, the user's role needs an items rule with both `list` and
+`read` on the issuer path. The `list` capability alone leaves the signing
+call unauthorized; rerun the first `set-role-rule` from chapter 7 with
 `--capability list --capability read`.
+
+## Portal shows no targets after login
+
+**Diagnosis:** portal login succeeds and the target list is empty, although
+the issuer has SRA enabled from chapter 8.
+
+**Fix:** the user's role has items rules but no SRA rule. Item and target
+capabilities never grant sessions; a role with full `read` and `list` on the
+issuer path still sees no targets. Only a rule of type `sra-rule` with a
+capability such as `allow_access` makes targets appear. Add the second
+`set-role-rule` from chapter 7 and allow a minute for propagation.
 
 ## Connect fails with `ERR! access-id is not in the allowed list`
 
