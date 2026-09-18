@@ -1,0 +1,12 @@
+# Prometheus configuration for the Akeyless Gateway metrics endpoint.
+# The gateway publishes metrics on port 8889 and joins the internal-metrics
+# network, so the scrape target is the service name on that network.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: akeyless-gateway
+    metrics_path: /
+    static_configs:
+      - targets: ["akeyless-gateway:8889"]

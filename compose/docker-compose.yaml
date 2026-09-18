@@ -1,0 +1,225 @@
+#For usage instructions please refer to the Akeyless documentation:
+#https://docs.akeyless.io/docs
+#This Compose file contains examples of Akeyless services:
+#  - akeyless-gateway
+#  - akeyless-sra-web and akeyless-sra-ssh (SRA)
+#  - akeyless-cache (for caching, required for SRA)
+#  - prometheus and grafana (for metrics, optional)
+#
+# Docker Compose supports the 'profiles' key to conditionally include services.
+#
+# In this file the profiles are:
+#   - gateway
+#   - sra
+#   - metrics
+#
+# To start services belonging to the 'gateway' and 'SRA' profiles:
+#   docker compose --profile sra --profile gateway up -d
+#
+# To start Prometheus and Grafana from the 'metrics' profile:
+#   docker compose --profile metrics up -d
+#
+# You can combine profiles or omit some, depending on your use case.
+
+# Make sure to fill out gateway.env, sra.env, and cache.env with your specific
+# credentials, tokens, or environment variables before running any
+# docker compose commands. Start from the *.example files shipped beside this
+# file.
+
+services:
+  akeyless-gateway:
+    profiles:
+      - gateway
+      - sra
+    depends_on:
+      akeyless-cache:
+        condition: service_started
+    image: akeyless/base:latest-akeyless
+    container_name: 'akeyless-gateway'
+    restart: always
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+      - "8889:8889"   # only if Metrics profile is enabled
+    env_file:
+      - gateway.env
+      - cache.env
+    platform: linux/amd64
+    links:
+      - "akeyless-cache"
+    # volumes:
+     # --- Metrics / OpenTelemetry (OPTIONAL) ---
+      # Put your own OTEL config on the host and mount it into the container.
+      # Replace <path-to-your-otel-config.yaml> with your actual file path.
+      # Example: ./metrics/otel-config.yaml:/akeyless/otel-config.yaml
+      # - ./metrics/otel-config.yaml:/akeyless/otel-config.yaml:ro
+
+      # --- TLS for Gateway Config Manager / local API (OPTIONAL) ---
+      # Provide YOUR OWN certificate and key (PEM-encoded) from the host.
+      # Replace the placeholders below with your real file paths.
+      # If you're not enabling TLS, comment these two lines out.
+      # Example crt: ./GW_TLS/ca.crt
+      # Example key: ./GW_TLS/key.pem
+      # - <path-to-your-ca.crt>:/home/akeyless/.akeyless/akeyless-api-cert.crt:ro
+      # - <path-to-your-key.pem>:/home/akeyless/.akeyless/akeyless-api-cert.key:ro
+
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
+    networks:
+      - internal-net
+      - internal-metrics
+
+  ## SRA Section
+  ## Refer to the documentation for Remote Access configuration:
+  ## https://docs.akeyless.io/docs/remote-access-docker
+  akeyless-web:
+    profiles:
+      - sra
+    depends_on:
+      akeyless-cache:
+        condition: service_started
+      akeyless-gateway:
+        condition: service_healthy
+    image: akeyless/zero-trust-bastion:latest
+    container_name: 'akeyless-sra-web'
+    restart: always
+    ports:
+      - "8888:8888"
+    env_file:
+      - sra.env
+      - gateway.env
+      - cache.env
+    environment:
+      REMOTE_ACCESS_TYPE: "web"
+      DEBUG: true
+    platform: linux/amd64
+    links:
+      - "akeyless-cache"
+    networks:
+      - internal-net
+
+  akeyless-ssh:
+    profiles:
+      - sra
+    depends_on:
+      akeyless-cache:
+        condition: service_started
+      akeyless-gateway:
+        condition: service_healthy
+    image: akeyless/zero-trust-bastion:latest
+    privileged: true
+    container_name: 'akeyless-sra-ssh'
+    restart: always
+    ports:
+      - "2222:22"
+      - "9900:9900"
+    env_file:
+      - sra.env
+      - gateway.env
+      - cache.env
+    environment:
+      DEBUG: true
+  # ------------------------------------------------------------------------------------------#
+  # SSH Volume                                                                                #
+  # Mount a FOLDER that contains your SSH CA public key named ca.pub.                         #
+  # The ca.pub file is the public key of the DFC key behind your SSH Certificate Issuer.      #
+  # See docs/04-ssh-certificate-issuer.md in this repository for how to export it.            #
+  # ------------------------------------------------------------------------------------------#
+    volumes:
+      - ./ssh-config/:/var/akeyless/creds/
+
+    platform: linux/amd64
+    links:
+      - "akeyless-cache"
+    networks:
+      - internal-net
+
+  ## For advanced Remote Access configuration documentation refer to:
+  ## https://docs.akeyless.io/docs/remote-access-advanced-configuration-docker
+  ## We highly recommend to run this as a non root user: CURRENT_UID=$(id -u):$(id -g) docker-compose up
+  ## Example - CURRENT_UID=1001:1001 docker-compose up
+  akeyless-cache:
+    profiles:
+      - gateway
+      - sra
+    container_name: "akeyless-cache"
+    image: redis:8.2.2-alpine  # Use alpine based REDIS image
+    command: /bin/sh -c "redis-server --requirepass \"$$REDIS_PASS\" --appendonly no --save ''"
+    env_file:
+      - gateway.env
+      - cache.env
+    networks:
+      - internal-net  # Restrict access to other containers
+    security_opt:
+      - no-new-privileges:true  # Prevent privilege escalation
+    cap_drop:
+      - ALL
+    user: "65534:65534"  # Run Redis as a non-root user (nobody)
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    # volumes:
+    #   - redis:/data
+    #   - ./redis-acl.conf:/opt/bitnami/redis/etc/redis.conf:ro
+
+
+  prometheus:
+    profiles:
+      - metrics
+    container_name: "prometheus"
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      # Prometheus config shipped with this repository; scrapes the gateway
+      # metrics endpoint on the internal-metrics network.
+      - ./metrics/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+      # --- PERSISTENCE: Prometheus TSDB data ---
+      # Keeps time-series data across container restarts/recreates.
+      - prometheus_data:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - internal-metrics
+
+  grafana:
+    profiles:
+      - metrics
+    container_name: "grafana"
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      # --- PERSISTENCE: Grafana state ---
+      # Stores dashboards saved via the UI, users, plugins, etc.
+      - grafana_data:/var/lib/grafana
+
+      # --- OPTIONAL: Pre-provision dashboards ---
+      # - ./metrics/grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
+
+      # --- OPTIONAL: Pre-provision data sources ---
+      # Point the Prometheus data source at http://prometheus:9090.
+      # - ./metrics/grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+
+    networks:
+      - internal-metrics
+
+
+networks:
+  internal-net:
+    driver: bridge
+  internal-metrics:
+    driver: bridge
+
+volumes:
+  grafana_data:     # Named volume: persists Grafana state across restarts
+  prometheus_data:  # Named volume: persists Prometheus TSDB data
