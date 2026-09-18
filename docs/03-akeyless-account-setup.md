@@ -79,6 +79,11 @@ and the SSH targets all live under `/sra/`. The gateway must read and manage
 those items and read the targets, and it has no reason to create targets
 itself.
 
+The target rule stops at `read` and `list` because the SSH certificate flow
+in this runbook never writes targets. Dynamic secret producers do read and
+write targets, so if you later add producers under `/sra/`, widen the target
+rule with `create`, `update`, and `delete` at that point.
+
 ## Bind the role to the auth method
 
 ```bash

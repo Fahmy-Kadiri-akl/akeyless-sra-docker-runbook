@@ -31,6 +31,13 @@ see a changed host key warning after every container rebuild. Persist them:
    file, for example `- ./ssh-host-keys:/sra/host-keys`.
 3. Recreate with the chapter 9 sequence.
 
+The path must be one the gateway identity can write. Storing host keys
+creates items under that path, which requires the `create` capability from
+the chapter 3 items rule on `/sra/*`. The rule as shipped grants it.
+Narrowing that role to `read` and `list` breaks host-key persistence, and
+the failure surfaces only as the host-key warning returning after the next
+recreate.
+
 ## Gateway remote-access tuning
 
 Three settings apply through the gateway CLI against your gateway URL:

@@ -96,6 +96,12 @@ method. The portal requires SAML, OIDC, certificate, or LDAP authentication,
 because it needs a browser login; LDAP works only on your own gateway portal.
 An API key works only for CLI sessions.
 
+Make the replacement a dedicated auth method. The OIDC auth method built
+into a new Akeyless account has a fixed redirect list covering only
+Akeyless-hosted domains, and that list cannot be edited to include your
+gateway address, so the built-in method can never serve portal logins on
+your own hostname. A method you create yourself carries no such restriction.
+
 ## Create the user role
 
 Three commands build the role: create it, then two rules, then the binding.
@@ -133,6 +139,12 @@ Unauthorized`. The second rule carries the SRA capability under
 `--rule-type sra-rule`; leaving the rule type off puts `allow_access` on an
 items rule, where the CLI rejects it as an invalid capability.
 
+List and read on the issuer are all a user ever needs. The signing happens
+inside the gateway under the gateway identity from chapter 3, and the DFC
+signer key behind the issuer is never readable through the user role. The
+only credential the user holds is the session certificate, which dies with
+the TTL set in chapter 4.
+
 Granting `allow_access` on the issuer path covers every host the issuer
 serves. To narrow a user to one host, set
 `--secure-access-enforce-hosts-restriction` on the issuer as shown in
@@ -146,6 +158,12 @@ akeyless list-roles --profile admin
 
 **Expected output:** `SraGatewayRole` from chapter 3 and `SraUsers`, both
 present.
+
+Permission changes take up to about a minute to propagate. A connect attempt
+run immediately after the association can fail with `401 Unauthorized` even
+though every command above succeeded. Wait a minute and retry once before
+re-auditing the rules; during the propagation window the failure looks
+identical to a misconfiguration.
 
 ## Choosing a stricter capability later
 
