@@ -114,6 +114,10 @@ services:
         condition: service_healthy
     image: akeyless/zero-trust-bastion:latest
     privileged: true
+    # The image's default uid 1001 cannot write to /etc/ssh or run usermod,
+    # and the entrypoint aborts with "exec operation not permitted".
+    # Run as root; the bastion drops privileges itself after setup.
+    user: "0:0"
     container_name: 'akeyless-sra-ssh'
     restart: always
     ports:
@@ -156,8 +160,9 @@ services:
       - cache.env
     networks:
       - internal-net  # Restrict access to other containers
-    security_opt:
-      - no-new-privileges:true  # Prevent privilege escalation
+    # no-new-privileges is deliberately omitted: the Redis entrypoint needs
+    # to exec redis-server under a new uid, and with it the container dies
+    # immediately with "exec operation not permitted".
     cap_drop:
       - ALL
     user: "65534:65534"  # Run Redis as a non-root user (nobody)

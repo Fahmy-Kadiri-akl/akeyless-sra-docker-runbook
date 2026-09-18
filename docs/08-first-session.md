@@ -20,6 +20,9 @@ mark icon.
 ```bash
 akeyless update-ssh-cert-issuer \
   --name /sra/SSHCertIssuer \
+  --signer-key-name /sra/SSHSignerKey \
+  --allowed-users 'ubuntu,session_*' \
+  --ttl 300 \
   --secure-access-enable true \
   --secure-access-api http://sra.example.internal:9900 \
   --secure-access-ssh sra.example.internal:2222 \
@@ -30,6 +33,11 @@ akeyless update-ssh-cert-issuer \
 
 Replace `sra.example.internal`, `ubuntu`, and `10.0.1.23` with your Docker
 host, target username, and target host from chapter 2.
+
+The three flags repeated from chapter 4, `--signer-key-name`,
+`--allowed-users`, and `--ttl`, are required again here. An update call
+without them fails with `required parameter missing`, because the update
+rebuilds the issuer definition rather than patching single fields.
 
 **What each flag sets:**
 
@@ -47,10 +55,14 @@ to exactly the listed hosts, add
 `--secure-access-enforce-hosts-restriction true`; without it, users holding
 `allow_access` may connect to hosts the issuer can reach even when unlisted.
 
-Starting with gateway version 4.45.0, SRA works with any issuer on which SRA
-is enabled. On older gateways the `allowed_users` list must also include
-`session_*`; this deployment pulls a current gateway image, so that is not
-needed here.
+The `--allowed-users` value repeats the list from chapter 4, including
+`session_*`. The bastion opens each session under a generated username of the
+form `session_<id>` and signs a certificate for it with this issuer. If the
+pattern is missing, connect fails with
+`username session_... not part of allowed user list`. The comma-separated
+form matters: repeating `--allowed-users` replaces the whole list instead of
+extending it, so an update intended to add a name can silently drop
+`session_*`.
 
 ### Verify
 
@@ -58,9 +70,23 @@ needed here.
 akeyless describe-item --name /sra/SSHCertIssuer --profile admin
 ```
 
-**Expected output:** a JSON blob whose `secure_access_details` section shows
-`enable: true`, your host, and the username. If the section is absent, the
-update did not apply; rerun the command and check for an error message.
+**Expected output:** a JSON blob whose `item_general_info` object contains a
+`secure_remote_access_details` section like this:
+
+```json
+"secure_remote_access_details": {
+  "enable": true,
+  "bastion_api": "http://sra.example.internal:9900",
+  "bastion_ssh": "sra.example.internal:2222",
+  "ssh_user": "ubuntu",
+  "host": ["10.0.1.23"],
+  "is_cli": true,
+  "host_provider_type": "explicit"
+}
+```
+
+If the section is absent, the update did not apply; rerun the command and
+check for an error message.
 
 ## One-time network preparation for targets
 
@@ -80,7 +106,14 @@ akeyless auth \
   --access-key xxxxxxxxxx
 ```
 
-**Expected output:** a token starting with `t-`. Copy it, then:
+**Expected output:**
+
+```
+Authentication succeeded.
+Token: t-xxxxxxxxxxxxxxxx
+```
+
+Copy the token, then:
 
 ```bash
 akeyless connect \
@@ -101,6 +134,13 @@ akeyless connect \
 | `-g` | The gateway base URL the CLI authenticates and signs against |
 | `--token` | The user token from `akeyless auth` |
 
+Two prompts appear on the first connect run and never again. The CLI asks
+`Can't find SSH keypair, would you like to create one? (Y/n)`; answer `Y`,
+because connect needs a local keypair to request certificates with. Then
+OpenSSH asks to confirm the bastion's host key; answer `yes`, or add
+`StrictHostKeyChecking accept-new` for the bastion host in `~/.ssh/config`
+when you script the connection.
+
 ### What success looks like
 
 The terminal shows the Akeyless banner:
@@ -114,8 +154,11 @@ dies after the issuer's five minute TTL; the session continues but no new
 session can ride on it.
 
 If you see `Permission denied`, the username is missing from the issuer's
-Allowed Users or does not exist on the target. If the connection times out,
-return to the network preparation above.
+Allowed Users or does not exist on the target. If connect fails with
+`username session_... not part of allowed user list`, the issuer's Allowed
+Users list lost `session_*` in an update; rerun the update command above
+with the full comma-separated list. If the connection times out, return to
+the network preparation above.
 
 ## Connect from the browser
 
