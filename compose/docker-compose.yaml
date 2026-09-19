@@ -136,7 +136,7 @@ services:
   # SSH Volume                                                                                #
   # Mount a FOLDER that contains your SSH CA public key named ca.pub.                         #
   # The ca.pub file is the public key of the DFC key behind your SSH Certificate Issuer.      #
-  # See docs/04-ssh-certificate-issuer.md in this repository for how to export it.            #
+  # See docs/common/04-ssh-certificate-issuer.md for how to export it.                      #  
   # ------------------------------------------------------------------------------------------#
     volumes:
       # :Z labels the mount private so the container can read it on SELinux

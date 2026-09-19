@@ -1,4 +1,4 @@
-# 9. Day-2 Operations
+# 9. Day-2 Operations, Docker Stream
 
 The stack is running; this chapter covers the recurring work: changing
 configuration, upgrading, reading logs, and collecting metrics.
@@ -112,5 +112,5 @@ and the account.
 
 ## Next step
 
-[Chapter 10: Advanced Configuration](10-advanced-configuration.md) for TLS,
-keepalives, host key persistence, and regional endpoints.
+[Chapter 10: Advanced Configuration](../common/10-advanced-configuration.md)
+for TLS, keepalives, host key persistence, and regional endpoints.

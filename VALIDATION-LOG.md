@@ -23,6 +23,15 @@ Chapters 1 through 8: prerequisites, account setup, issuer, Compose
 configuration, start and verify, access control, first session. Chapter 9
 upgrade paths and chapter 10 optional features were outside this pass.
 
+## How the runbook is structured
+
+Chapters live in three places. `docs/common/` holds the seven chapters that
+apply to both runtimes. `docs/docker/` and `docs/podman/` hold chapters 2,
+6, 9, and 11, one native copy per runtime: the Docker stream is written
+entirely with `docker compose`, the Podman stream entirely with rootful
+`sudo podman compose`. Findings below name chapters by number; a runtime
+chapter cited here exists in both streams.
+
 ## Findings and fixes
 
 | # | Symptom during the pass | Root cause | Fix landed |
@@ -62,17 +71,18 @@ target as the expected OS user.
 ## Podman pass
 
 A second pass, September 2026, ran the same Compose kit on Podman 4.9
-rootful with the `podman-docker` shim and a standalone Docker Compose v2 as
-the external provider. The Docker findings above still stand unchanged. The
-differences this pass found are folded into the chapters:
+rootful with a standalone Docker Compose v2 as the external provider,
+invoked directly as `podman compose` and through the `podman-docker` shim.
+The Docker findings above still stand unchanged. The differences this pass
+found are folded into the Podman stream:
 
 | # | Symptom during the pass | Root cause | Fix landed |
 |---|---|---|---|
-| P1 | Every `docker` command without `sudo` saw an empty stack | The shim maps `docker` to the calling user's Podman store, and the stack runs rootful | Chapter 2 Podman notes: prefix every command with `sudo` |
-| P2 | `docker logs akeyless-gateway --tail 50` failed with `no container with name or ID "--tail" found` | The shim passes arguments to `podman`, which rejects a flag placed after the container name | All chapters now write flags before container names, a form Docker Engine also accepts |
+| P1 | Every command without `sudo` saw an empty stack | An unprefixed `podman` command reads the calling user's store, and the stack runs rootful | Podman stream chapter 2: prefix every command with `sudo`; chapter 11 lists the empty stack as its own symptom |
+| P2 | `podman logs akeyless-gateway --tail 50` failed with `no container with name or ID "--tail" found` | Podman rejects a flag placed after the container name | Both streams write flags before container names, a form Docker Engine also accepts |
 | P3 | Connections to the gateway through its second network were dropped | The gateway sits on two bridge networks, so it holds two routes, and strict reverse-path filtering discards traffic arriving on the secondary interface | `sysctls` on the gateway service set `rp_filter` to loose mode, validated on Podman and Docker Engine |
-| P4 | Connect printed the containerized target's greeting, then died with exit 254, or failed intermittently with 255 | The target container inherited the launching session's loginuid, the stock `pam_loginuid required` line in its `/etc/pam.d/sshd` cannot rewrite it, PAM opens no session, and sshd exits after the greeting | Chapter 11 symptom section; containerized targets need `session optional pam_loginuid.so` |
-| P5 | After a host reboot the stack would stay down | Podman does not honor `restart: always` on boot by itself | Chapter 2: enable `podman-restart.service` |
+| P4 | Connect printed the containerized target's greeting, then died with exit 254, or failed intermittently with 255 | The target container inherited the launching session's loginuid, the stock `pam_loginuid required` line in its `/etc/pam.d/sshd` cannot rewrite it, PAM opens no session, and sshd exits after the greeting | Chapter 11 of both streams; containerized targets need `session optional pam_loginuid.so` |
+| P5 | After a host reboot the stack would stay down | Podman does not honor `restart: always` on boot by itself | Podman stream chapters 2 and 9: enable `podman-restart.service` |
 
 Lab-host specifics that are not general requirements: the Docker snap was
 stopped because two container engines on one host overwrite each other's
@@ -89,3 +99,21 @@ documented, and the Compose file with the sysctls block still bringing up a
 healthy gateway under Docker Engine 29.6. The reboot path was verified as
 configuration, `podman-restart.service` enabled and active with the restart
 policies set; an actual reboot was not exercised.
+
+## Follow-up: sessions failing silently after abnormal session history
+
+A later exercise on the Podman host produced a failure the passes above had
+not seen: `akeyless connect` authenticated, printed the banner, then ended
+with exit status 255 and no command output. The SSH bastion log showed the
+session reaching request forwarding and then `Failed to send request: EOF`
+for the `env` and `shell` requests. Everything else verified healthy at the
+same time: the Compose kit, the environment files, the CA mount, the issuer,
+the roles, the per-session chroot the bastion builds, and the target.
+
+The failure appeared on a bastion that had been through a stack recreate and
+repeated interrupted and hand-driven sessions during deep diagnosis. A full
+stack down and up restored service completely: five consecutive connects each
+ran their command on the target and closed with a clean exit-status
+forwarding sequence in the bastion log. The internal cause inside the
+bastion was not identified, so chapter 11 of both streams documents the
+observed signature and the verified recovery, not a root cause.

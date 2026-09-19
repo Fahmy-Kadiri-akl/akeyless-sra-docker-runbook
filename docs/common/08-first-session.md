@@ -31,7 +31,7 @@ akeyless update-ssh-cert-issuer \
   --secure-access-host 10.0.1.23
 ```
 
-Replace `sra.example.internal`, `ubuntu`, and `10.0.1.23` with your Docker
+Replace `sra.example.internal`, `ubuntu`, and `10.0.1.23` with your container
 host, target username, and target host from chapter 2.
 
 The three flags repeated from chapter 4, `--signer-key-name`,
@@ -90,10 +90,10 @@ check for an error message.
 
 ## One-time network preparation for targets
 
-The SSH bastion connects to targets from the Docker host, not from the
-user's machine. On each target host, allow SSH from the Docker host address
-in the host firewall or security group. The Akeyless guide's most common
-failure is skipping this step: the session then times out at connect.
+The SSH bastion connects to targets from the container host, not from the
+user's machine. On each target host, allow SSH from the container host
+address in the host firewall or security group. The Akeyless guide's most
+common failure is skipping this step: the session then times out at connect.
 
 ## Connect from the CLI as the first user
 
@@ -130,7 +130,7 @@ akeyless connect \
 |---|---|
 | `-t` | OS user and target host with port; must match the issuer's username and an allowed host |
 | `-c` | The SSH Certificate Issuer, with SRA enabled |
-| `-v` | The SSH bastion endpoint, host port 2222 on the Docker host |
+| `-v` | The SSH bastion endpoint, host port 2222 on the container host |
 | `-g` | The gateway base URL the CLI authenticates and signs against |
 | `--token` | The user token from `akeyless auth` |
 
@@ -183,5 +183,7 @@ trusted by targets, a user role, and a verified end-to-end session.
 
 ## Next step
 
-[Chapter 9: Day-2 Operations](09-day-2-operations.md) keeps it running:
-upgrades, logs, and metrics.
+Chapter 9 is where the streams split: its commands differ per runtime.
+Continue with [chapter 9 of the Docker stream](../docker/09-day-2-operations.md)
+or [chapter 9 of the Podman stream](../podman/09-day-2-operations.md), which
+keeps it running: upgrades, logs, and metrics.
