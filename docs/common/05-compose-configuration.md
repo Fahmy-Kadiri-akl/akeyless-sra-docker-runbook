@@ -75,7 +75,7 @@ Redis is bound to `127.0.0.1:6379` on the host and runs as user 65534 with
 all capabilities dropped. The password is defense in depth, not the only
 barrier. One hardening flag is deliberately absent: the Compose file sets no
 `no-new-privileges` on this service, because the Redis entrypoint execs the
-server process under a different uid and current Docker releases kill it
+server process under a different uid and current container runtimes kill it
 with `exec operation not permitted` when the flag is present.
 
 ## The ssh-config mount
@@ -95,26 +95,25 @@ mounted folder, not a single file, so never put anything else in
 From the `compose/` directory:
 
 ```bash
-docker compose --profile gateway --profile sra config --quiet
-```
-
-**Expected output:** nothing. The command validates the Compose file, the
-env files, and their references, and prints only when something is wrong. A
-missing `cache.env` or `sra.env` produces an error naming the file; the fix
-is the `cp` from the top of this chapter.
-
-```bash
 ls ssh-config/
 ```
 
 **Expected output:** `ca.pub` and `README.md`. If `ca.pub` is missing, return
 to chapter 4.
 
+The full Compose validation, which checks the env files and their references
+with `config --quiet`, is the first step of chapter 6 in your stream; run it
+there before the first start.
+
 ## What you have at this point
 
-A complete, validated Compose kit: four environment files, a CA public key
-in place, and a Compose definition whose references all resolve.
+A complete Compose kit: four environment files, a CA public key in place,
+and a Compose definition whose references chapter 6 will validate for your
+runtime.
 
 ## Next step
 
-[Chapter 6: Start and Verify](06-start-and-verify.md) brings the stack up.
+Chapter 6 is where the streams split: its commands differ per runtime.
+Continue with [chapter 6 of the Docker stream](../docker/06-start-and-verify.md)
+or [chapter 6 of the Podman stream](../podman/06-start-and-verify.md), which
+brings the stack up.

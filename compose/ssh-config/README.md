@@ -13,7 +13,8 @@ The Compose file mounts this folder into the SSH bastion at
 public key.
 
 You export the key from the DFC key behind your SSH Certificate Issuer in
-[docs/04-ssh-certificate-issuer.md](../../docs/04-ssh-certificate-issuer.md).
+[chapter 4](../../docs/common/04-ssh-certificate-issuer.md).
 
-The bastion will fail to start sessions without this file. See
-[docs/11-troubleshooting.md](../../docs/11-troubleshooting.md) if it is missing.
+The bastion will fail to start sessions without this file. See chapter 11 of
+your stream, [Docker](../../docs/docker/11-troubleshooting.md) or
+[Podman](../../docs/podman/11-troubleshooting.md), if it is missing.

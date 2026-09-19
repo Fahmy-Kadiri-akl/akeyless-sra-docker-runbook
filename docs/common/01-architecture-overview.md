@@ -26,7 +26,7 @@ flowchart TB
         USER["User machine<br/>akeyless CLI or browser"]
     end
 
-    subgraph host["Docker host"]
+    subgraph host["Container host"]
         subgraph compose["Compose project"]
             GW["akeyless-gateway<br/>:8000 API and console<br/>:8080 health and internal API<br/>:8889 metrics"]
             SSHB["akeyless-sra-ssh<br/>:2222 mapped to container 22<br/>:9900 control channel"]
@@ -108,7 +108,7 @@ Every port the deployment uses, with its consumer and direction:
 | 9090 | HTTP | Your network | Prometheus, metrics profile only |
 | 3000 | HTTP | Your network | Grafana, metrics profile only |
 
-Outbound from the Docker host:
+Outbound from the container host:
 
 | Destination | Port | Purpose |
 |---|---|---|
@@ -126,5 +126,8 @@ network is a firewall decision made in chapter 2.
 
 ## Next step
 
-[Chapter 2: Prerequisites](02-prerequisites.md) sizes the host and lists every
-requirement with verification commands.
+Chapter 2 is where the streams split: it is written once per runtime, because
+the software you install differs. Continue with
+[chapter 2 of the Docker stream](../docker/02-prerequisites.md) or
+[chapter 2 of the Podman stream](../podman/02-prerequisites.md). Both size
+the host and list every requirement with verification commands.
